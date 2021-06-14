@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE glassfish-web-app PUBLIC "-//GlassFish.org//DTD GlassFish Application Server 3.1 Servlet 3.0//EN" "http://glassfish.org/dtds/glassfish-web-app_3_0-1.dtd">
+<glassfish-web-app error-url="">
+    <class-loader delegate="true"/>
+    <jsp-config>
+        <property name="keepgenerated" value="true">
+            <description>Keep a copy of the generated servlet class' java code.</description>
+        </property>
+    </jsp-config>
+    <sun-web-app> 
+        <!--<property name="alternatedocroot_1" value="from=/school-house.jpg dir=c:/DTNew/media/"/>-->
+        <property name="alternatedocroot_1" value="from=/FCI/Images/* dir=C:/Suraj/UofM/DeepTutor/DTNew/Images/Tests"/> 
+        <property name="alternatedocroot_2" value="from=/Images/Tasks/* dir=C:/Suraj/UofM/DeepTutor/DTNew"/> 
+
+        <!-- <property name="alternatedocroot_3" value="from=/jpg/* dir=/src/images"/>  -->  
+        <!-- http://harkiran-howtos.blogspot.com/2009/08/map-external-directory-into-glassfish.html-->
+    </sun-web-app>
+</glassfish-web-app>

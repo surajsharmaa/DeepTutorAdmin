@@ -1,0 +1,408 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 
+Actions: 
+	 ACTION_LOAD_TASK = "loadTask";
+     ACTION_CHECK_ANSWER_COVERS_EXPS = "checkAnswerCoversExpectations";
+     ACTION_GET_FEEDBACK = "getFeedback";
+     ACTION_GET_NEXT_UNCOVERED_EXP = "getNextUncoveredExpectation";
+     ACTION_SHOW_PUMP = "showPump";
+     ACTION_GIVE_HINT = "giveHint";
+     ACTION_SHOW_PROMPT = "showPrompt";
+     ACTION_CREATE_TASK_EXP_SUMMARY = "createTaskExpSummary";
+     ACTION_MARK_CURRENT_EXP_COVERED = "markCurrentExpAsCovered";
+	 
+Conditions: 
+     COND_HAS_MORE_TASKS = "hasMoreTasks";
+     COND_EXPECTATIONS_HIT = "expectationsHit";
+     COND_ANY_UNCOVERED_EXP = "isAnyUncoveredExpectation";
+     COND_ANSWER_TOO_SHORT = "answerTooShort";
+     COND_ANSWER_IRRELEVANT = "answerIrrelevant";
+     COND_CORRECT_ANSWER_TO_PUMP = "correctAnswerToThePump";
+     COND_NEXT_HINT_IS_SEQ = "nextHintIsSequenceHint";
+     COND_NEXT_HINT_IS_COND = "nextHintIsConditionalHint";
+     COND_NEXT_HINT_IS_FINAL = "nextHintIsFinalHint";
+     COND_HINT_ANSWER_CORRECT = "correctAnswerToTheHint";
+     COND_NO_MORE_HINTS = "noMoreHints";
+     COND_FIRST_UNCOVERED_EXP = "firstUncoveredExpectation";
+     COND_MISCONCEPTION_HIT = "misconceptionHit";
+
+Data Structures 
+	dialogContext Map<String,Object>
+		Objcts: 
+			TaskProgressInfo
+			CurrentState
+			ResponseText
+			List<String> dialogStack (inside/outside this module)
+	
+-->
+<dm>
+    <states>
+        <state name="AllTasks" start= "true" desc="Start state. Once a task is finished, the flow comes to this state again." waitForInput = "false" />
+        <state name="TaskStart" desc = "" waitForInput = "true"/>
+        <state name="ExpectationStart" desc="" waitForInput = "false"/> 
+        <state name="Pump" desc="" waitForInput = "true" />
+        <state name="SequenceHint" desc="" waitForInput = "true" />		
+        <state name="ConditionalHint" desc="" waitForInput = "true" />		
+        <state name="FinalHint" desc="" waitForInput = "true" />		
+        <state name="Prompt" desc="" waitForInput = "true" />	
+        <state name="ExpectationEnd" desc="" waitForInput = "false" />	
+        <state name="TaskEnd" desc=""  waitForInput = "true"/>
+        <state name="HALT" end = "true" desc="" waitForInput = "true" />
+		
+    </states>  
+    <transitions>
+
+        <transition from="AllTasks" to="TaskStart">
+            <conditions>
+                <cond oper="~hasMoreTasks"/>
+            </conditions>			
+            <actions>
+                <action>loadTask</action> 
+                <!-- <action>showTask</action> , now the response is formatted from the load task. We will refactor and divide into two functions -->
+            </actions>
+        </transition>
+
+        <transition from="AllTasks" to="HALT">
+            <conditions>
+                <cond oper="~!hasMoreTasks"/>
+            </conditions>			
+            <actions>
+                <action>sayThankYou</action> 
+            </actions>
+        </transition>		
+		
+        <!-- if all expectatons are covered by the answer, go to the task end directly (correct?) -->
+        <transition from="TaskStart" to="TaskEnd" >
+            <conditions>
+                <cond oper="~!isAnyUncoveredExpectation"/>
+            </conditions>			
+            <actions>
+                <!-- <action>getFeedback</action> -->
+                <action>createTaskExpSummary</action>
+            </actions>
+        </transition>	
+
+
+        <transition from="TaskStart" to="ExpectationStart" >
+            <conditions>
+                <cond oper ="~isAnyUncoveredExpectation"/>
+            </conditions>			
+            <actions>
+                <action>getFeedback</action>
+                <action>getNextUncoveredExpectation</action>															
+            </actions>
+        </transition>
+
+        <!-- start from pump if short essay answer covers at least one expectation (i.e. it is not the first uncovered expectation)
+         			 or it is handling subsequent expectations (after finishing at least one expectation before, and working specifically on this expectation).
+      		-->		
+        <transition from="ExpectationStart" to="Pump" >
+            <conditions>
+                <!-- <cond oper ="~expectationsHit"/> -->
+                <cond oper ="!~firstUncoveredExpectation"/> 
+            </conditions>			
+            <actions>
+                <action>showPump</action>								
+            </actions>
+        </transition>
+		
+		
+        <!-- start from pump if one expectation is finished and start working on another expectation -->
+        <!--
+      		<transition from="ExpectationStart" to="Pump" >
+         			<conditions>
+            				<cond oper ="~startingAnotherExpectation"/>
+         			</conditions>			
+         			<actions>
+            				<action>showPump</action>								
+         			</actions>
+      		</transition> -->
+		
+
+        <!-- Start from sequence hint (if any) if the short essay answer does not cover any expectations -->
+        <transition from="ExpectationStart" to="SequenceHint" >
+            <conditions>
+                <!-- <cond oper="~!expectationsHit"/> -->
+                <cond oper ="~firstUncoveredExpectation"/> 
+            </conditions>			
+            <actions>
+                <!-- <action>getFeedback</action> feedback is created when the answer is evaluated -->
+                <action>getNextUncoveredExpectation</action>								
+                <action>giveHint</action>
+            </actions>
+        </transition>		
+		
+        <!-- At Pump:
+         			Possibilities are: (a) Go to the expectation end (b) Go to sequence hint (c) Go to conditional hint (d) Go to final hint.
+      		-->
+		
+        <transition from="Pump" to="ExpectationEnd">
+            <conditions>
+                <cond oper="~correctAnswerToThePump"/>
+            </conditions>			
+            <actions>
+                <action>markCurrentExpAsCovered</action>
+            </actions>
+        </transition>
+		
+        <transition from="Pump" to="SequenceHint">
+            <conditions>
+                <cond oper="~!correctAnswerToThePump"/>
+                <cond oper="~nextHintIsSequenceHint"/>
+                <!-- <cond oper="~misconceptionHit"/> -->
+            </conditions>			
+            <actions>
+                <!-- <action> getHint</action> -->
+                <action>giveHint</action>
+            </actions>
+        </transition>
+		
+        <transition from="Pump" to="ConditionalHint">
+            <conditions>
+                <cond oper="~!correctAnswerToThePump"/>
+                <cond oper="~nextHintIsConditionalHint"/>
+            </conditions>			
+            <actions>
+                <!-- <action> getHint</action> -->
+                <action>giveHint</action>
+            </actions>
+        </transition>
+		
+        <transition from="Pump" to="FinalHint">
+            <conditions>
+                <cond oper="~!correctAnswerToThePump"/>
+                <cond oper="~nextHintIsFinalHint"/>
+            </conditions>			
+            <actions>
+                <!-- <action> getHint</action> -->
+                <action>giveHint</action>
+            </actions>
+        </transition>		
+		
+        <transition from="Pump" to="Prompt">
+            <conditions>
+                <cond oper="~!correctAnswerToThePump"/>
+                <cond oper="~noMoreHints"/>
+            </conditions>			
+            <actions>
+                <!-- <action> getHint</action> -->
+                <action>showPrompt</action>
+            </actions>
+        </transition>		
+
+		
+		
+        <!-- At Sequential hint 
+         			Possibilities are: (a) Remain in the same state (b) Go to conditional hints.
+      		-->		
+				
+        <transition from="SequenceHint" to="SequenceHint">
+            <conditions>
+                <!--	<cond oper="~correctAnswerToTheHint"/> -->
+                <cond oper="~nextHintIsSequenceHint"/>
+            </conditions>			
+            <actions>
+                <!-- <action>getHintFeedback</action> -->
+                <action>giveHint</action>
+            </actions>
+        </transition>
+		
+        <!-- 
+      		<transition from="SequenceHint" to="SequenceHint">
+         			<conditions>
+            				<cond oper="~!correctAnswerToTheHint"/>
+            				<cond oper="~nextHintIsSequenceHint"/>
+         			</conditions>			
+         			<actions>
+            				<action>getHintFeedback</action>
+            				<action>giveHint</action>
+         			</actions>
+      		</transition>	-->	
+		
+        <transition from="SequenceHint" to="ConditionalHint">
+            <conditions>
+                <!-- <cond oper="~correctAnswerToTheHint"/> -->
+                <cond oper="~nextHintIsConditionalHint"/>
+            </conditions>			
+            <actions>
+                <action>giveHint</action>
+            </actions>
+        </transition>		
+        <!-- 
+      		<transition from="SequenceHint" to="ConditionalHint">
+         			<conditions>
+            				<cond oper="~!correctAnswerToTheHint"/>
+            				<cond oper="~nextHintIsConditionalHint"/>
+         			</conditions>			
+         			<actions>
+         			</actions>
+      		</transition> -->	
+
+        <!-- if nowhere to go from sequence hint, cases like: no conditional hint, no final hint etc. Start from prompt. -->	
+        <transition from="SequenceHint" to="Prompt">
+            <conditions>
+                <cond oper="~noMoreHints"/>
+            </conditions>			
+            <actions>
+                <action>showPrompt</action>
+            </actions>
+        </transition>		
+
+		
+        <!-- AT conditional hint 
+         			Possibilities are: (a) Remain in the same state (b) Go to Final hint (c) Go to Sequence hint.
+      		-->
+        <transition from="ConditionalHint" to="ConditionalHint">
+            <conditions>
+                <cond oper="!~correctAnswerToTheHint"/>
+                <cond oper="~nextHintIsConditionalHint"/> 
+            </conditions>			
+            <actions>
+                <action>giveHint</action>
+            </actions>
+        </transition>
+		
+        <!--
+      		<transition from="ConditionalHint" to="ConditionalHint">
+         			<conditions>
+            				<cond oper="~!correctAnswerToTheHint"/>
+            				<cond oper="~nextHintIsConditionalHint"/>
+         			</conditions>			
+         			<actions>
+         			</actions>
+      		</transition>	-->	
+		
+        <!-- Not mentioned in the diagram -->
+        <transition from="ConditionalHint" to="SequenceHint">
+            <conditions>
+                <cond oper="!~correctAnswerToTheHint"/> 
+                <cond oper="~nextHintIsSequenceHint"/>
+            </conditions>			
+            <actions>
+                <action>giveHint</action>
+            </actions>
+        </transition>	
+
+        <!--
+      		<transition from="ConditionalHint" to="SequenceHint">
+         			<conditions>
+            				<cond oper="~!correctAnswerToTheHint"/>
+            				<cond oper="~nextHintIsSequenceHint"/>
+         			</conditions>			
+         			<actions>
+         			</actions>
+      		</transition> -->
+
+        <transition from="ConditionalHint" to="FinalHint">
+            <conditions>
+                <cond oper="!~correctAnswerToTheHint"/> 
+                <cond oper="~nextHintIsFinalHint"/>
+            </conditions>			
+            <actions>
+                <action>giveHint</action>
+            </actions>
+        </transition>	
+        
+        <!-- vrus: August,08,2014:  Have transitions from conditional hints to the final hint. 
+        That is, if a student answers correctly the conditional hint the flow jumps to final hint otherwise goes to next hint, 
+        which could be of any type.
+        -->
+        <transition from="ConditionalHint" to="FinalHint">
+            <conditions>
+                <cond oper="~correctAnswerToTheHint"/> 
+            </conditions>			
+            <actions>
+                <action>giveHint</action>
+            </actions>
+        </transition>            
+                	
+		
+        <!-- Not in the diagram -->
+        <!--
+      		<transition from="ConditionalHint" to="FinalHint">
+         			<conditions>
+            				<cond oper="~!correctAnswerToTheHint"/>
+            				<cond oper="~nextHintIsFinalHint"/>
+         			</conditions>			
+         			<actions>
+         			</actions>
+      		</transition>		-->
+		
+        <transition from="ConditionalHint" to="Prompt">
+            <conditions>
+                <!-- <cond oper="~correctAnswerToTheHint"/> -->
+                <cond oper="~noMoreHints"/>
+            </conditions>			
+            <actions>
+                <action>showPrompt</action>
+            </actions>
+        </transition>		
+		
+		
+		
+		
+        <!-- AT final hint 
+         			Possibilities are:  (a) Go to expectation end (b) Go to prompt.
+         			It is assumed that there will be only one final hint (if exists), and either it goes to exp end or prompt. Correct?
+      		-->
+        <transition from="FinalHint" to="ExpectationEnd">
+            <conditions>
+                <cond oper="~correctAnswerToTheHint"/>
+            </conditions>			
+            <actions>
+                <!-- <action> add current expectation assertion in the response? </action> -->
+                <action>markCurrentExpAsCovered</action>
+            </actions>
+        </transition>	
+		
+        <transition from="FinalHint" to="Prompt">
+            <conditions>
+                <cond oper="~!correctAnswerToTheHint"/>
+            </conditions>			
+            <actions>
+                <action>showPrompt</action>
+            </actions>
+        </transition>					
+
+        <!-- At prompt
+         			Possibilities are: (a) go to the expectation end. No condition?
+      		-->
+        <transition from="Prompt" to="ExpectationEnd">
+            <conditions>
+                <!-- no condition ? -->
+            </conditions>			
+            <actions>
+                <!-- <action> givefeedback </action> -->
+                <action>markCurrentExpAsCovered</action>
+            </actions>
+        </transition>
+		
+        <transition from="ExpectationEnd" to="ExpectationStart">
+            <conditions>
+                <!-- how to specify argument passing when calling a function -->
+                <cond oper="~isAnyUncoveredExpectation"/>
+            </conditions>			
+            <actions>
+                <action>getNextUncoveredExpectation</action>
+            </actions>
+        </transition>		
+		
+        <transition from="ExpectationEnd" to="TaskEnd">
+            <conditions>
+                <!-- how to specify argument passing when calling a function -->
+                <cond oper="~!isAnyUncoveredExpectation"/>
+            </conditions>			
+            <actions>
+                <action>createTaskExpSummary</action>  
+            </actions>
+        </transition>		
+	
+        <transition from="TaskEnd" to="AllTasks">
+            <conditions>
+                <!-- any condition.. -->
+            </conditions>			
+            <actions>
+            </actions>
+        </transition>			
+    </transitions>
+</dm>

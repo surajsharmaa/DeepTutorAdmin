@@ -1,0 +1,22 @@
+#File and Folder Locations
+#-------------------------------------------
+
+# This section should have folder paths only.
+dt.localroot=C:/Suraj/UofM/DeepTutor/DTNew
+dt.resource.tasks=/Tasks
+dt.resource.tests.images=/Images/
+dt.resource.tasks.images=/Tasks/images
+dt.resource.logloc=/Logs
+dt.resource.test=/Tests
+dt.resource.demo.tasks=/Tasks/demo
+dt.resource.demo.datapath=/Data/demo
+
+# File names, paths etc.
+dt.resource.test.pretest-a=FCI-Blended-A.xml
+dt.resource.test.pretest-b=FCI-Blended-B.xml
+dt.resource.scripts=/Scripts/Scripts.xml
+dt.resource.lp=/Lp/LP-Physics.xml
+dt.resource.dictionary=/dict/english.0 
+dt.resource.dialogpolicy=/dt_dialog_policy.xml
+
+

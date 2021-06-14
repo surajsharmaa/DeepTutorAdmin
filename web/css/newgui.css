@@ -1,0 +1,22 @@
+#maintable {
+	width: 1098px;
+	color: #fff;
+       border: 1px solid black
+}
+#header {
+	background: #5978b3;
+	height: 120px;
+	width: 100%;
+}
+
+#headertext{ color: #fff;}
+
+#header h1 {
+	margin: 0;
+	color: #fff;
+}
+
+#header h2 {
+	margin: 0;
+	color: #fff;
+}
